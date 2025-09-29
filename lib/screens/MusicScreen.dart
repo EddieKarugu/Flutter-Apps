@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:phanplay/screens/home_screen.dart';
 
 import '../Initializers/user_shared_preferences.dart';
 import '../controllers/ThemeController.dart';
@@ -36,7 +37,6 @@ class _SongsState extends State<Songs> {
     _hasPermission ? setState(() {}) : null;
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,7 +56,7 @@ class _SongsState extends State<Songs> {
             onPressed: () {
               setState(() {
                 ThemeController.isLightTheme.value =
-                !ThemeController.isLightTheme.value;
+                    !ThemeController.isLightTheme.value;
                 UserSharedPrefs.prefs!.setBool(
                   'PhanPlayIsLightMode',
                   ThemeController.isLightTheme.value,
@@ -104,7 +104,16 @@ class _SongsState extends State<Songs> {
                     itemCount: item.data!.length,
                     itemBuilder: (context, index) {
                       return ListTile(
-                        onTap: (){},
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => HomeScreen(
+                                songs: item.data!,
+                                currentSongIndex: index,
+                              ),
+                            ),
+                          );
+                        },
                         title: Text(
                           item.data![index].title,
                           maxLines: 1,
@@ -115,7 +124,6 @@ class _SongsState extends State<Songs> {
 
                         // This Widget will query/load image.
                         // You can use/create your own widget/method using [queryArtwork].
-
                         leading: QueryArtworkWidget(
                           controller: _audioQuery,
                           id: item.data![index].id,
@@ -123,7 +131,7 @@ class _SongsState extends State<Songs> {
                           size: 100,
                           nullArtworkWidget: CircleAvatar(
                             radius: 28,
-                            child: const Icon(Icons.music_note)
+                            child: const Icon(Icons.music_note),
                           ),
                         ),
                       );

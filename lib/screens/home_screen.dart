@@ -1,22 +1,31 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:phanplay/Initializers/user_shared_preferences.dart';
-import 'package:phanplay/controllers/ThemeController.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String audio;
-  final String name;
-  const HomeScreen({super.key, required this.audio, required this.name});
+  final List<SongModel> songs;
+ final int currentSongIndex;
+
+  const HomeScreen({
+    super.key,
+    required this.songs,
+    required this.currentSongIndex,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final player = AudioPlayer();
+  late ConcatenatingAudioSource _playlist;
+  late AudioPlayer _audioPlayer;
+
   int speed = 1;
   bool isMuted = false;
+
+  bool isShuffle = false;
+  bool isRepeat = false;
 
   // Helper to format duration for display
   String _formatDuration(Duration duration) {
@@ -29,34 +38,39 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _audioPlayer = AudioPlayer();
     setMusicPlayer();
   }
 
-  void setMusicPlayer() async{
-    if(player.playing){
-      await player.dispose();
+  void setMusicPlayer() async {
+    _playlist = ConcatenatingAudioSource(
+      children: [
+        for (var song in widget.songs) AudioSource.uri(Uri.parse(song.uri!)),
+      ],
+    );
+
+    try {
+      await _audioPlayer.setAudioSource(
+        _playlist,
+        initialIndex: widget.currentSongIndex,
+        initialPosition: Duration.zero,
+      );
+      await _audioPlayer.play();
+      setState(() {});
+    } catch (e) {
+      print(e);
     }
-    await player.setFilePath(widget.audio);
   }
 
   @override
-  void dispose(){
+  void dispose() {
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (player.playing) {
-      setState(() {
-        player.position;
-      });
-    }
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('PhanPlay'),
-        centerTitle: true,
-
-      ),
+      appBar: AppBar(title: const Text('PhanPlay'), centerTitle: true),
       body: Container(
         height: double.maxFinite,
         width: double.maxFinite,
@@ -72,18 +86,21 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Spacer(),
             SizedBox(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
+                    _buildArtwork(widget.songs[widget.currentSongIndex]),
                     Text(
-                      widget.name ?? 'Music Name here',
+                      widget.songs.elementAt(widget.currentSongIndex).title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Text(player.icyMetadata?.headers?.genre ?? 'Genre'),
+                    Text(
+                      widget.songs.elementAt(widget.currentSongIndex).artist ??
+                          "No Artist",
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -91,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         IconButton(
                           onPressed: () {
                             setState(() {
-                              player.setVolume(1);
+                              _audioPlayer.setVolume(1);
                             });
                           },
                           icon: Icon(Icons.volume_up_rounded),
@@ -100,7 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () {
                             setState(() {
                               isMuted = !isMuted;
-                              isMuted? player.setVolume(0): player.setVolume(1);
+                              isMuted
+                                  ? _audioPlayer.setVolume(0)
+                                  : _audioPlayer.setVolume(1);
                             });
                           },
                           icon: Icon(
@@ -121,13 +140,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             setState(() {
                               speed = value!;
                               if (speed == 0) {
-                                player.setSpeed(.5);
+                                _audioPlayer.setSpeed(.5);
                               } else if (speed == 1) {
-                                player.setSpeed(1.0);
+                                _audioPlayer.setSpeed(1.0);
                               } else if (speed == 2) {
-                                player.setSpeed(1.5);
+                                _audioPlayer.setSpeed(1.5);
                               } else if (speed == 3) {
-                                player.setSpeed(2.0);
+                                _audioPlayer.setSpeed(2.0);
                               }
                             });
                           },
@@ -135,10 +154,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     StreamBuilder<Duration?>(
-                      stream: player.positionStream,
+                      stream: _audioPlayer.positionStream,
                       builder: (context, snapshot) {
                         final position = snapshot.data ?? Duration.zero;
-                        final duration = player.duration ?? Duration.zero;
+                        final duration = _audioPlayer.duration ?? Duration.zero;
 
                         return Row(
                           children: [
@@ -148,10 +167,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                 value: position.inSeconds.toDouble(),
                                 onChanged: (val) {
                                   setState(() {
-                                    player.seek(Duration(seconds: val.toInt()));
+                                    _audioPlayer.seek(
+                                      Duration(seconds: val.toInt()),
+                                    );
                                   });
                                 },
-                                max: player.duration?.inSeconds.toDouble() ?? 1,
+                                max:
+                                    _audioPlayer.duration?.inSeconds
+                                        .toDouble() ??
+                                    1,
                                 thumbColor: Colors.deepPurple,
                                 activeColor: Colors.deepPurple,
                                 inactiveColor: Color(0xff00eeff),
@@ -166,34 +190,58 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
-                          onPressed: () async{
-                            await player.shuffle();
+                          onPressed: () async {
+                            setState(() {
+                              isShuffle = !isShuffle;
+                            });
+                            if (isShuffle) {
+                              await _audioPlayer.shuffle();
+                            }
+                            isShuffle
+                                ? await _audioPlayer.setShuffleModeEnabled(
+                                    true,
+                                  )
+                                : await _audioPlayer.setShuffleModeEnabled(
+                                    false,
+                                  );
                           },
-                          icon: Icon(Icons.shuffle, size: 40),
+                          icon: Icon(
+                            Icons.shuffle,
+                            size: 40,
+                            color: isShuffle ? Colors.deepPurple : null,
+                          ),
                         ),
                         IconButton(
-                          onPressed: () async{
-                            await player.seekToPrevious();
+                          onPressed: () async {
+                            await _audioPlayer.seekToPrevious();
+                            setState(() {
+
+                            });
                           },
                           icon: Icon(Icons.skip_previous, size: 50),
                         ),
                         IconButton(
                           onPressed: () async {
                             setState(() {
-                              player.playing;
+                              _audioPlayer.playing;
                             });
-                            player.playing
-                                ? await player.pause()
-                                : await player.play();
+                            _audioPlayer.playing
+                                ? await _audioPlayer.pause()
+                                : await _audioPlayer.play();
                           },
                           icon: Icon(
-                            player.playing ? Icons.pause : Icons.play_arrow,
+                            _audioPlayer.playing
+                                ? Icons.pause
+                                : Icons.play_arrow,
                             size: 50,
                           ),
                         ),
                         IconButton(
                           onPressed: () async {
-                            await player.seekToNext();
+                            await _audioPlayer.seekToNext();
+                            setState(() {
+
+                            });
                           },
                           icon: Icon(Icons.skip_next, size: 50),
                         ),
@@ -203,12 +251,63 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                    Expanded(child: Container(
+                      child: Column(
+                        children: [
+                          Text('Playlist'),
+                          
+                        ]
+                      ),
+                    ))
                   ],
                 ),
               ),
             ),
-            const Spacer(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArtwork(SongModel? song) {
+    if (song == null) {
+      return Container(
+        width: 200,
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(Icons.music_note, size: 100, color: Colors.grey[600]),
+      );
+    }
+    return Container(
+      width: 200,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            spreadRadius: 2,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: QueryArtworkWidget(
+        id: song.id,
+        type: ArtworkType.AUDIO,
+        artworkFit: BoxFit.cover,
+        size: 200, // Request a larger artwork size
+        quality: 100,
+        nullArtworkWidget: Container(
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(child: Icon(Icons.music_note, size: 100)),
         ),
       ),
     );
