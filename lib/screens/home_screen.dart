@@ -3,6 +3,49 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
+class MusicPlayerService {
+  static final AudioPlayer _audioPlayer = AudioPlayer();
+  static ConcatenatingAudioSource? _playlist;
+  static int? _currentPlayingIndex;
+  static List<SongModel>? _currentSongs;
+
+  static AudioPlayer get audioPlayer => _audioPlayer;
+  static int? get currentPlayingIndex => _currentPlayingIndex;
+  static List<SongModel>? get currentSongs => _currentSongs;
+
+  static Future<void> playNewPlaylist({
+    required List<SongModel> songs,
+    required int initialIndex,
+  }) async {
+    // Only set a new playlist if it's actually different
+    if (_currentSongs != songs || _currentPlayingIndex != initialIndex) {
+      _currentSongs = songs;
+      _currentPlayingIndex = initialIndex;
+
+      _playlist = ConcatenatingAudioSource(
+        children: [
+          for (var song in songs) AudioSource.uri(Uri.parse(song.uri!)),
+        ],
+      );
+
+      try {
+        await _audioPlayer.setAudioSource(
+          _playlist!,
+          initialIndex: initialIndex,
+          initialPosition: Duration.zero,
+        );
+        await _audioPlayer.play();
+      } catch (e) {
+        print("Error playing new playlist: $e");
+      }
+    } else {
+      // If it's the same song, just ensure it's playing
+      if (!_audioPlayer.playing) {
+        _audioPlayer.play();
+      }
+    }
+  }}
+
 class HomeScreen extends StatefulWidget {
   final List<SongModel> songs;
  final int currentSongIndex;
@@ -38,8 +81,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _audioPlayer = AudioPlayer();
+    _audioPlayer = MusicPlayerService.audioPlayer;
     setMusicPlayer();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentSongIndex != oldWidget.currentSongIndex || widget.songs != oldWidget.songs) {
+      setMusicPlayer();
+    }
   }
 
   void setMusicPlayer() async {
