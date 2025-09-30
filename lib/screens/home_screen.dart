@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -44,11 +45,12 @@ class MusicPlayerService {
         _audioPlayer.play();
       }
     }
-  }}
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   final List<SongModel> songs;
- final int currentSongIndex;
+  final int currentSongIndex;
 
   const HomeScreen({
     super.key,
@@ -88,7 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didUpdateWidget(covariant HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.currentSongIndex != oldWidget.currentSongIndex || widget.songs != oldWidget.songs) {
+    if (widget.currentSongIndex != oldWidget.currentSongIndex ||
+        widget.songs != oldWidget.songs) {
       setMusicPlayer();
     }
   }
@@ -143,14 +146,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     _buildArtwork(widget.songs[widget.currentSongIndex]),
-                    Text(
-                      widget.songs.elementAt(widget.currentSongIndex).title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      widget.songs.elementAt(widget.currentSongIndex).artist ??
-                          "No Artist",
+                    StreamBuilder<int?>(stream: _audioPlayer.currentIndexStream, builder: (context, snapshot){
+                      final currentIndex = snapshot.data ?? widget.currentSongIndex;
+                      return Text(
+                        widget.songs.elementAt(currentIndex).title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    }),
+                    StreamBuilder<int?>(
+                      stream: _audioPlayer.currentIndexStream,
+                      builder: (context, snapshot) {
+                        final currentIndex =
+                            snapshot.data ?? widget.currentSongIndex;
+                        return Text(
+                          widget.songs.elementAt(currentIndex).artist ?? 'Unknown',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -249,9 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               await _audioPlayer.shuffle();
                             }
                             isShuffle
-                                ? await _audioPlayer.setShuffleModeEnabled(
-                                    true,
-                                  )
+                                ? await _audioPlayer.setShuffleModeEnabled(true)
                                 : await _audioPlayer.setShuffleModeEnabled(
                                     false,
                                   );
@@ -262,15 +274,34 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: isShuffle ? Colors.deepPurple : null,
                           ),
                         ),
-                        IconButton(
-                          onPressed: () async {
-                            await _audioPlayer.seekToPrevious();
-                            setState(() {
+                       StreamBuilder<PlayerState>(stream: _audioPlayer.playerStateStream, builder: (context, snapshot){
+                         final playerState = snapshot.data;
+                         final processingState = playerState?.processingState;
+                         final playing = playerState?.playing;
 
-                            });
-                          },
-                          icon: Icon(Icons.skip_previous, size: 50),
-                        ),
+                         if(processingState == ProcessingState.loading || processingState == ProcessingState.buffering){
+                           return IconButton(
+                             onPressed: (){},
+                             icon: CircularProgressIndicator(
+                               color: Colors.deepPurple,
+                             ),
+                           );
+                         }
+                         else{
+                           if (playing != true){
+                             return IconButton(
+                               onPressed: (){},
+                               icon: Icon(Icons.play_arrow, size: 40),
+                             );
+                           }
+                           else{
+                             return IconButton(
+                               onPressed: (){},
+                               icon: Icon(Icons.pause_circle, size: 40),
+                             );
+                           }
+                         }
+                       }),
                         IconButton(
                           onPressed: () async {
                             setState(() {
@@ -290,9 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         IconButton(
                           onPressed: () async {
                             await _audioPlayer.seekToNext();
-                            setState(() {
-
-                            });
+                            setState(() {});
                           },
                           icon: Icon(Icons.skip_next, size: 50),
                         ),
@@ -302,14 +331,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    Expanded(child: Container(
-                      child: Column(
-                        children: [
-                          Text('Playlist'),
-                          
-                        ]
+                    Expanded(
+                      child: Container(
+                        child: Column(children: [Text('Playlist')]),
                       ),
-                    ))
+                    ),
                   ],
                 ),
               ),
