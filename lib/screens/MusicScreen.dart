@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:phanplay/screens/home_screen.dart';
+import '../Initializers/musicPlayerService.dart';
 import '../Initializers/user_shared_preferences.dart';
 import '../controllers/ThemeController.dart';
 import '../widgets/customTextField.dart';
+import 'package:lottie/lottie.dart';
 
 class Songs extends StatefulWidget {
   const Songs({Key? key}) : super(key: key);
@@ -41,7 +43,7 @@ class _SongsState extends State<Songs> {
   }
 
   @override
-  void dispose(){
+  void dispose() {
     _searchController.dispose();
     super.dispose();
   }
@@ -49,12 +51,19 @@ class _SongsState extends State<Songs> {
   void _filterSongs(String searchText) {
     setState(() {
       if (searchText.isEmpty) {
-        _filteredSongs = List.from(_allSongs); // Show all songs if search is empty
+        _filteredSongs = List.from(
+          _allSongs,
+        ); // Show all songs if search is empty
       } else {
         _filteredSongs = _allSongs
-            .where((song) =>
-        song.title.toLowerCase().contains(searchText.toLowerCase()) ||
-            (song.artist?.toLowerCase().contains(searchText.toLowerCase()) ?? false)) // Also search by artist
+            .where(
+              (song) =>
+                  song.title.toLowerCase().contains(searchText.toLowerCase()) ||
+                  (song.artist?.toLowerCase().contains(
+                        searchText.toLowerCase(),
+                      ) ??
+                      false),
+            ) // Also search by artist
             .toList();
       }
     });
@@ -122,76 +131,108 @@ class _SongsState extends State<Songs> {
 
                   if (_allSongs.isEmpty && item.data != null) {
                     _allSongs = item.data!;
-                    _filteredSongs = List.from(_allSongs); // Initially show all songs
+                    _filteredSongs = List.from(
+                      _allSongs,
+                    ); // Initially show all songs
                   }
 
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Customtextfield(
-                          hint: 'Search music here',
-                          icon: Icons.search,
-                          controller: _searchController,
-                          onChanged: (String text) {
-                            setState(() {
-                              _filteredSongs = _allSongs
-                                  .where(
-                                    (song) => song.title.toLowerCase().contains(
-                                      text.toLowerCase(),
-                                    ),
-                                  )
-                                  .toList();
-                            });
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _filteredSongs.isEmpty? const Center(child: Text('No Songs Found'),)
-                        :
-                        ListView.builder(
-                          itemCount: _filteredSongs.length,
-                          itemBuilder: (context, index) {
-                            final songs = _filteredSongs;
-
-                            return ListTile(
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => HomeScreen(
-                                      songs: songs,
-                                      currentSongIndex: index,
-                                    ),
-                                  ),
-                                );
+                  return ValueListenableBuilder<int?>(
+                    valueListenable: PositionController.currentMusic,
+                    builder: (context, currentMusic, child) {
+                      return Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Customtextfield(
+                              hint: 'Search music here',
+                              icon: Icons.search,
+                              controller: _searchController,
+                              onChanged: (String text) {
+                                setState(() {
+                                  PositionController.currentMusic.value = null;
+                                  _filteredSongs = _allSongs
+                                      .where(
+                                        (song) => song.title
+                                            .toLowerCase()
+                                            .contains(text.toLowerCase()),
+                                      )
+                                      .toList();
+                                });
                               },
-                              title: Text(
-                                songs[index].title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                songs[index].artist ?? "No Artist",
-                              ),
-                              trailing: const Icon(Icons.more_vert),
+                            ),
+                          ),
+                          Expanded(
+                            child: _filteredSongs.isEmpty
+                                ? const Center(child: Text('No Songs Found'))
+                                : ListView.builder(
+                                    itemCount: _filteredSongs.length,
+                                    itemBuilder: (context, index) {
+                                      final songs = _filteredSongs;
 
-                              // This Widget will query/load image.
-                              // You can use/create your own widget/method using [queryArtwork].
-                              leading: QueryArtworkWidget(
-                                controller: _audioQuery,
-                                id: songs[index].id,
-                                type: ArtworkType.AUDIO,
-                                size: 100,
-                                nullArtworkWidget: CircleAvatar(
-                                  radius: 28,
-                                  child: const Icon(Icons.music_note),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                                      return ListTile(
+                                        onTap: () {
+                                          setState(() {
+                                            PositionController
+                                                    .currentMusic
+                                                    .value =
+                                                index;
+                                          });
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => HomeScreen(
+                                                songs: songs,
+                                                currentSongIndex: index,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        title: Text(
+                                                songs[index].title,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: currentMusic == index
+                                                      ? Colors.deepPurple
+                                                      : null,
+                                                ),
+                                              ),
+                                        subtitle: Text(
+                                          songs[index].artist ?? "No Artist",
+                                          style: TextStyle(
+                                            color: currentMusic == index
+                                                ? Colors.deepPurple
+                                                : null,
+                                          ),
+                                        ),
+                                        trailing: const Icon(Icons.more_vert),
+
+                                        leading: currentMusic == index
+                                            ? Lottie.asset(
+                                            'assets/json/soundAnimation.json',
+                                            repeat: true,
+                                            reverse: true,
+                                            width: 50,
+                                            height: 50
+                                        )
+                                            : QueryArtworkWidget(
+                                                controller: _audioQuery,
+                                                id: songs[index].id,
+                                                type: ArtworkType.AUDIO,
+                                                size: 100,
+                                                nullArtworkWidget: CircleAvatar(
+                                                  radius: 28,
+                                                  child: const Icon(
+                                                    Icons.music_note,
+                                                  ),
+                                                ),
+                                              ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -203,7 +244,7 @@ class _SongsState extends State<Songs> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: Colors.deepPurple,
+        color: Colors.transparent,
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
