@@ -16,6 +16,7 @@ class FavouritesScreen extends StatelessWidget {
         () => favouritesController.favouriteSongs.isEmpty
             ? Center(child: const Text('Your Favourites playlist is empty'))
             : ListView.builder(
+          itemCount: favouritesController.favouriteSongs.length,
                 itemBuilder: (context, index) {
                   final song = favouritesController.favouriteSongs[index];
                   return ListTile(

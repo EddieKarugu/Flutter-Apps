@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:phanplay/controllers/ThemeController.dart';
+import 'package:phanplay/controllers/favourites_controller.dart';
 import '../Initializers/musicPlayerService.dart';
+import 'package:get/get.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<SongModel> songs;
@@ -26,7 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // State variables for UI
   int speed = 1;
   bool isMuted = false;
-  bool isStarred = false;
   bool isShuffle = false; // Just_audio handles shuffle internally
   bool isRepeat = false; // This is redundant if you use LoopMode.one
   bool isLooping = false; // Just_audio handles loop mode
@@ -87,30 +88,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final FavouritesController favouritesController = Get.find();
+    bool isStarred = favouritesController.favouriteSongs.contains(
+      widget.songs[widget.currentSongIndex],
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('PhanPlay'),
         centerTitle: true,
         actions: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                isStarred = !isStarred;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    duration: const Duration(milliseconds: 1000),
-                    content: Text(
-                      isStarred
-                          ? 'Added to Favourites'
-                          : 'Removed from Favourites',
+          Obx(
+              ()=> IconButton(
+                onPressed: () {
+                  isStarred
+                      ? favouritesController.removeFavourites(
+                    widget.songs[widget.currentSongIndex],
+                  )
+                      : favouritesController.addFavourite(
+                    widget.songs[widget.currentSongIndex],
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(milliseconds: 1000),
+                      content: Text(
+                        isStarred
+                            ? 'Removed from Favourites'
+                            : 'Added to Favourites',
+                      ),
                     ),
-                  ),
-                );
-              });
-            },
-            icon: Icon(isStarred ? Icons.star : Icons.star_border),
-          ),
+                  );
+                },
+                icon: Icon(isStarred ? Icons.star : Icons.star_border),
+              ),
+          )
         ],
       ),
       body: Container(

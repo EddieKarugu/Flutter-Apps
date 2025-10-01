@@ -169,102 +169,125 @@ class _SongsState extends State<Songs> {
                             child: _filteredSongs.isEmpty
                                 ? const Center(child: Text('No Songs Found'))
                                 : ListView.builder(
-                                    itemCount: _filteredSongs.length,
-                                    itemBuilder: (context, index) {
-                                      final songs = _filteredSongs;
+                              itemCount: _filteredSongs.length,
+                              itemBuilder: (context, index) {
+                                final songs = _filteredSongs;
 
-                                      return ListTile(
+                                return  ListTile(
+                                  onTap: () {
+                                    setState(() {
+                                      PositionController
+                                          .currentMusic
+                                          .value =
+                                          index;
+                                    });
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => HomeScreen(
+                                          songs: songs,
+                                          currentSongIndex: index,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  title: Text(
+                                    songs[index].title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: currentMusic == index
+                                          ? Colors.deepPurple
+                                          : null,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    songs[index].artist ?? "No Artist",
+                                    style: TextStyle(
+                                      color: currentMusic == index
+                                          ? Colors.deepPurple
+                                          : null,
+                                    ),
+                                  ),
+                                  trailing:PopupMenuButton(
+                                    tooltip: 'More Actions',
+                                    itemBuilder: (context) => [
+                                      PopupMenuItem(
+                                        child: Obx(
+                                      ()=> Text(
+                                favouritesController.favouriteSongs.contains(songs[index])?
+                                'Remove From Favourites':
+                                'Add to Favourites'
+                                )
+                                  ),
                                         onTap: () {
-                                          setState(() {
-                                            PositionController
-                                                    .currentMusic
-                                                    .value =
-                                                index;
-                                          });
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (context) => HomeScreen(
-                                                songs: songs,
-                                                currentSongIndex: index,
+                                          final isFaved =
+                                          favouritesController
+                                              .favouriteSongs
+                                              .contains(
+                                            songs[index],
+                                          );
+                                          isFaved
+                                              ? favouritesController
+                                              .removeFavourites(
+                                            songs[index],
+                                          )
+                                              : favouritesController
+                                              .addFavourite(
+                                            songs[index],
+                                          );
+                                          Future.delayed(const Duration(milliseconds: 100));
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                isFaved
+                                                    ? 'Removed from Favourites'
+                                                    : 'Added to Favourites',
+                                              ),
+                                              behavior: SnackBarBehavior
+                                                  .floating,
+                                              duration: const Duration(
+                                                milliseconds: 500,
                                               ),
                                             ),
                                           );
                                         },
-                                        title: Text(
-                                          songs[index].title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: currentMusic == index
-                                                ? Colors.deepPurple
-                                                : null,
-                                          ),
-                                        ),
-                                        subtitle: Text(
-                                          songs[index].artist ?? "No Artist",
-                                          style: TextStyle(
-                                            color: currentMusic == index
-                                                ? Colors.deepPurple
-                                                : null,
-                                          ),
-                                        ),
-                                        trailing: Obx(
-                                            () => PopupMenuButton(
-                                              tooltip: 'More Actions',
-                                              itemBuilder: (context) => [
-                                                PopupMenuItem(
-                                                  child: Text('Add to Favourites'),
-                                                  onTap: () {
-                                                   final isFaved = favouritesController.favouriteSongs.contains(songs[index]);
-                                                    isFaved? favouritesController.removeFavourites(songs[index])
-                                                    :favouritesController
-                                                        .addFavourite(songs[index]);
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(isFaved? 'Remove from Favourites': 'Add to Favourites'),
-                                                        behavior: SnackBarBehavior.floating,
-                                                        duration: const Duration(milliseconds: 500),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                                PopupMenuItem(
-                                                  child: Text('Delete'),
-                                                  onTap: () {},
-                                                ),
-                                                PopupMenuItem(
-                                                  child: Text('Add to Playlist'),
-                                                  onTap: () {},
-                                                ),
-                                              ],
-                                            ),
-                                        ),
-
-                                        leading: currentMusic == index
-                                            ? Lottie.asset(
-                                                'assets/json/soundAnimation.json',
-                                                repeat: true,
-                                                reverse: true,
-                                                width: 50,
-                                                height: 50,
-                                              )
-                                            : QueryArtworkWidget(
-                                                controller: _audioQuery,
-                                                id: songs[index].id,
-                                                type: ArtworkType.AUDIO,
-                                                size: 100,
-                                                nullArtworkWidget: CircleAvatar(
-                                                  radius: 28,
-                                                  child: const Icon(
-                                                    Icons.music_note,
-                                                  ),
-                                                ),
-                                              ),
-                                      );
-                                    },
+                                      ),
+                                      PopupMenuItem(
+                                        child: Text('Delete'),
+                                        onTap: () {},
+                                      ),
+                                      PopupMenuItem(
+                                        child: Text('Add to Playlist'),
+                                        onTap: () {},
+                                      ),
+                                    ],
                                   ),
+
+                                  leading: currentMusic == index
+                                      ? Lottie.asset(
+                                    'assets/json/soundAnimation.json',
+                                    repeat: true,
+                                    reverse: true,
+                                    width: 50,
+                                    height: 50,
+                                  )
+                                      : QueryArtworkWidget(
+                                    controller: _audioQuery,
+                                    id: songs[index].id,
+                                    type: ArtworkType.AUDIO,
+                                    size: 100,
+                                    nullArtworkWidget: CircleAvatar(
+                                      radius: 28,
+                                      child: const Icon(
+                                        Icons.music_note,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ],
                       );
