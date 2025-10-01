@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phanplay/screens/favourites_screen.dart';
 
 import 'MusicScreen.dart';
 
@@ -14,7 +15,7 @@ class _BotttomNavBarState extends State<BotttomNavBar> {
   final List<Widget> _screens = [
     const Songs(),
     const Text('Videos'),
-    const Text('Favourites'),
+    const FavouritesScreen(),
     const Text('Account')
   ];
 
