@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:phanplay/controllers/favourites_controller.dart';
 import 'package:phanplay/screens/home_screen.dart';
 import '../Initializers/musicPlayerService.dart';
 import '../Initializers/user_shared_preferences.dart';
 import '../controllers/ThemeController.dart';
 import '../widgets/customTextField.dart';
 import 'package:lottie/lottie.dart';
+import 'package:get/get.dart';
 
 class Songs extends StatefulWidget {
   const Songs({Key? key}) : super(key: key);
@@ -71,6 +73,8 @@ class _SongsState extends State<Songs> {
 
   @override
   Widget build(BuildContext context) {
+    final FavouritesController favouritesController = Get.find();
+
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
@@ -204,22 +208,38 @@ class _SongsState extends State<Songs> {
                                                 : null,
                                           ),
                                         ),
-                                        trailing: PopupMenuButton(
-                                          tooltip: 'More Actions',
-                                          itemBuilder: (context) => [
-                                            PopupMenuItem(
-                                              child: Text('Add to Favourites'),
-                                              onTap: () {},
+                                        trailing: Obx(
+                                            () => PopupMenuButton(
+                                              tooltip: 'More Actions',
+                                              itemBuilder: (context) => [
+                                                PopupMenuItem(
+                                                  child: Text('Add to Favourites'),
+                                                  onTap: () {
+                                                   final isFaved = favouritesController.favouriteSongs.contains(songs[index]);
+                                                    isFaved? favouritesController.removeFavourites(songs[index])
+                                                    :favouritesController
+                                                        .addFavourite(songs[index]);
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(isFaved? 'Remove from Favourites': 'Add to Favourites'),
+                                                        behavior: SnackBarBehavior.floating,
+                                                        duration: const Duration(milliseconds: 500),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                                PopupMenuItem(
+                                                  child: Text('Delete'),
+                                                  onTap: () {},
+                                                ),
+                                                PopupMenuItem(
+                                                  child: Text('Add to Playlist'),
+                                                  onTap: () {},
+                                                ),
+                                              ],
                                             ),
-                                            PopupMenuItem(
-                                              child: Text('Delete'),
-                                              onTap: () {},
-                                            ),
-                                            PopupMenuItem(
-                                              child: Text('Add to Playlist'),
-                                              onTap: () {},
-                                            ),
-                                          ],
                                         ),
 
                                         leading: currentMusic == index

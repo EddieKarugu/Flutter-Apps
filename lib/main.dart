@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phanplay/Initializers/get_initialize.dart';
 import 'package:phanplay/Initializers/user_shared_preferences.dart';
 import 'package:phanplay/controllers/ThemeController.dart';
 import 'package:phanplay/screens/botttom_nav_bar.dart';
@@ -9,6 +10,7 @@ void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await UserSharedPrefs.init();
   MusicPlayerService.init();
+  GetInitialize.init();
   runApp(MyApp());
 }
 
