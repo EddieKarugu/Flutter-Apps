@@ -187,15 +187,15 @@ class _SongsState extends State<Songs> {
                                           );
                                         },
                                         title: Text(
-                                                songs[index].title,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  color: currentMusic == index
-                                                      ? Colors.deepPurple
-                                                      : null,
-                                                ),
-                                              ),
+                                          songs[index].title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: currentMusic == index
+                                                ? Colors.deepPurple
+                                                : null,
+                                          ),
+                                        ),
                                         subtitle: Text(
                                           songs[index].artist ?? "No Artist",
                                           style: TextStyle(
@@ -204,16 +204,32 @@ class _SongsState extends State<Songs> {
                                                 : null,
                                           ),
                                         ),
-                                        trailing: const Icon(Icons.more_vert),
+                                        trailing: PopupMenuButton(
+                                          tooltip: 'More Actions',
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem(
+                                              child: Text('Add to Favourites'),
+                                              onTap: () {},
+                                            ),
+                                            PopupMenuItem(
+                                              child: Text('Delete'),
+                                              onTap: () {},
+                                            ),
+                                            PopupMenuItem(
+                                              child: Text('Add to Playlist'),
+                                              onTap: () {},
+                                            ),
+                                          ],
+                                        ),
 
                                         leading: currentMusic == index
                                             ? Lottie.asset(
-                                            'assets/json/soundAnimation.json',
-                                            repeat: true,
-                                            reverse: true,
-                                            width: 50,
-                                            height: 50
-                                        )
+                                                'assets/json/soundAnimation.json',
+                                                repeat: true,
+                                                reverse: true,
+                                                width: 50,
+                                                height: 50,
+                                              )
                                             : QueryArtworkWidget(
                                                 controller: _audioQuery,
                                                 id: songs[index].id,
