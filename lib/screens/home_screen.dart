@@ -84,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _audioPlayer = MusicPlayerService.audioPlayer;
     setMusicPlayer();
+
   }
 
   @override
@@ -112,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       print(e);
     }
+
+
   }
 
   @override
@@ -162,10 +165,14 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
-             StreamBuilder<int?>(stream: _audioPlayer.currentIndexStream, builder: (context, snapshot){
-               final currentIndex = snapshot.data ?? widget.currentSongIndex;
-               return  _buildArtwork(widget.songs[currentIndex]);
-             }),
+              StreamBuilder<int?>(
+                stream: _audioPlayer.currentIndexStream,
+                builder: (context, snapshot) {
+                  final currentIndex = snapshot.data ?? widget.currentSongIndex;
+                  return _buildArtwork(widget.songs[currentIndex]);
+                },
+              ),
+              const SizedBox(height: 16),
               StreamBuilder<int?>(
                 stream: _audioPlayer.currentIndexStream,
                 builder: (context, snapshot) {
@@ -188,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 26),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -343,7 +350,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               Expanded(
-                child: Container(child: Column(children: [Text('Playlist')])),
+                child: Column(
+                  children: [
+                    Text('Playlist'),
+                  ],
+                ),
               ),
             ],
           ),

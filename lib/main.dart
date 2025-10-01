@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phanplay/Initializers/user_shared_preferences.dart';
 import 'package:phanplay/controllers/ThemeController.dart';
 import 'package:phanplay/screens/MusicScreen.dart';
+import 'package:phanplay/screens/botttom_nav_bar.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +38,7 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           theme: value? ThemeData.light(useMaterial3: true)
               :ThemeData.dark(useMaterial3: true),
-          home: Songs(),
+          home: BotttomNavBar(),
         );
       },
     );
