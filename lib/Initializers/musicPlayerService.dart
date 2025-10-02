@@ -101,7 +101,7 @@ class MusicPlayerService {
 
   // Add next and previous methods to the service
   static Future<void> seekToNext() async {
-    await _audioPlayer.seekToNext();
+    await audioPlayer.seekToNext();
     PositionController.currentMusic.value! > _currentSongs!.length
         ? PositionController.currentMusic.value =
         PositionController.currentMusic.value! - 1
@@ -109,10 +109,27 @@ class MusicPlayerService {
   }
 
   static Future<void> seekToPrevious() async {
-    await _audioPlayer.seekToPrevious();
+    await audioPlayer.seekToPrevious();
     PositionController.currentMusic.value! > 0
         ? PositionController.currentMusic.value =
               PositionController.currentMusic.value! - 1
         : PositionController.currentMusic.value = 0;
   }
+
+
+  static Future<void> seekToIndex(int index) async {
+    if (_audioPlayer.currentIndex != index) {
+      await _audioPlayer.seek(Duration.zero, index: index);
+      // Ensure the service's internal state reflects the new song
+      if (currentSongs != null && index < currentSongs!.length) {
+        // You might want to update a currentSong variable in the service if you have one
+        // For now, just_audio's internal index will handle it.
+        PositionController.currentMusic.value = index;
+      }
+    }
+  }
+
+// And make sure your seekToNext and seekToPrevious methods also appropriately update the index.
+// just_audio's `seekToNext()` and `seekToPrevious()` naturally update the `currentIndexStream`
+// so the PageView will respond via the listener.
 }

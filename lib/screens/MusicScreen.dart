@@ -127,7 +127,7 @@ class _SongsState extends State<Songs> {
 
                   // Waiting content.
                   if (item.data == null) {
-                    return const CircularProgressIndicator();
+                    return Lottie.asset('assets/json/starLoader.json', repeat: true,);
                   }
 
                   // 'Library' is empty.

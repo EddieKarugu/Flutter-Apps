@@ -22,22 +22,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Get the audio player instance from the service
   late AudioPlayer _audioPlayer;
+  late PageController _pageController; // Add PageController
 
-  // State variables for UI
   int speed = 1;
   bool isMuted = false;
-  bool isShuffle = false; // Just_audio handles shuffle internally
-  bool isRepeat = false; // This is redundant if you use LoopMode.one
-  bool isLooping = false; // Just_audio handles loop mode
+  bool isShuffle = false;
+  bool isRepeat = false;
+  bool isLooping = false;
 
-  // Helper to format duration for display
+  int _currentPageIndex = -1;
+
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    // Only show hours if duration is greater than an hour
     if (duration.inHours > 0) {
       return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
     }
@@ -48,9 +47,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _audioPlayer = MusicPlayerService.audioPlayer;
-    // Initial call to play the music via the service
+
+    // Initialize PageController with the current song index
+    _pageController = PageController(initialPage: widget.currentSongIndex);
+
     _playInitialMusic();
-    // Listen to shuffle mode changes from the player
+
     _audioPlayer.shuffleModeEnabledStream.listen((enabled) {
       if (mounted) {
         setState(() {
@@ -58,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
-    // Listen to loop mode changes from the player
+
     _audioPlayer.loopModeStream.listen((loopMode) {
       if (mounted) {
         setState(() {
@@ -66,47 +68,65 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
+
+    // Listen to the audio player's current index stream
+    // and update the PageController if the player changes song outside of a swipe (e.g., auto-play next)
+    _audioPlayer.currentIndexStream.listen((playerIndex) {
+      if (mounted && playerIndex != null && playerIndex != _currentPageIndex) {
+        _currentPageIndex = playerIndex; // Update our internal tracker
+        _pageController.animateToPage(
+          playerIndex,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.ease,
+        );
+      }
+    });
   }
 
   void _playInitialMusic() async {
-    // Let the service handle playing the music.
-    // It will check if it's a new playlist/song or just needs to resume.
     await MusicPlayerService.playNewPlaylist(
       songs: widget.songs,
       initialIndex: widget.currentSongIndex,
     );
   }
 
-  // No need for didUpdateWidget to re-set the player,
-  // as the service manages it based on playNewPlaylist.
-
   @override
   void dispose() {
-    // Do not dispose _audioPlayer here, as it's managed by the service.
+    _pageController.dispose(); // Dispose the PageController
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final FavouritesController favouritesController = Get.find();
-    bool isStarred = favouritesController.favouriteSongs.contains(
-      widget.songs[widget.currentSongIndex],
-    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('PhanPlay'),
         centerTitle: true,
         actions: [
-          Obx(
-              ()=> IconButton(
+          // This StreamBuilder ensures the star icon updates when the song changes via swipe
+          StreamBuilder<int?>(
+            stream: _audioPlayer.currentIndexStream,
+            builder: (context, snapshot) {
+              final int? currentIndex = snapshot.data;
+              final List<SongModel>? currentPlaylistSongs = MusicPlayerService.currentSongs;
+
+              if (currentIndex == null || currentPlaylistSongs == null || currentIndex >= currentPlaylistSongs.length) {
+                return IconButton( // Placeholder for when no song is loaded
+                  onPressed: null,
+                  icon: Icon(Icons.star_border),
+                );
+              }
+
+              final SongModel currentSong = currentPlaylistSongs[currentIndex];
+              bool isStarred = favouritesController.favouriteSongs.contains(currentSong);
+
+              return IconButton(
                 onPressed: () {
                   isStarred
-                      ? favouritesController.removeFavourites(
-                    widget.songs[widget.currentSongIndex],
-                  )
-                      : favouritesController.addFavourite(
-                    widget.songs[widget.currentSongIndex],
-                  );
+                      ? favouritesController.removeFavourites(currentSong)
+                      : favouritesController.addFavourite(currentSong);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       behavior: SnackBarBehavior.floating,
@@ -118,10 +138,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   );
+                  // Update the UI immediately after changing favorite status
+                  setState(() {});
                 },
                 icon: Icon(isStarred ? Icons.star : Icons.star_border),
-              ),
-          )
+              );
+            },
+          ),
         ],
       ),
       body: Container(
@@ -139,91 +162,63 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
-              StreamBuilder<int?>(
-                stream: _audioPlayer.currentIndexStream,
-                builder: (context, snapshot) {
-                  // Get current index from the player's stream
-                  final int? currentIndex = snapshot.data;
-                  // Get the current song list from the service (which should be in sync)
-                  final List<SongModel>? currentPlaylistSongs =
-                      MusicPlayerService.currentSongs;
-
-                  if (currentIndex == null ||
-                      currentPlaylistSongs == null ||
-                      currentIndex >= currentPlaylistSongs.length) {
-                    return _buildArtwork(
-                      null,
-                    ); // Or a loading/placeholder state
-                  }
-                  final SongModel currentSong =
-                      currentPlaylistSongs[currentIndex];
-                  return _buildArtwork(currentSong);
-                },
+              // Use PageView.builder for the song-specific content
+              Expanded( // Ensure PageView takes available space
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: widget.songs.length, // Number of songs in the playlist
+                  onPageChanged: (index) {
+                    // This is crucial: when the page changes, tell the audio player to seek to that song
+                    MusicPlayerService.seekToIndex(index);
+                  },
+                  itemBuilder: (context, index) {
+                    // Build the content for each song page
+                    final SongModel song = widget.songs[index];
+                    return Column(
+                      children: [
+                        _buildArtwork(song), // Artwork for the current song
+                        const SizedBox(height: 16),
+                        Text(
+                          song.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ThemeController.isLightTheme.value
+                                ? Colors.black
+                                : Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          song.artist ?? 'Unknown',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ThemeController.isLightTheme.value
+                                ? Colors.grey[700]
+                                : Colors.grey[300],
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 26),
+                        // ... (Other controls like volume, speed, slider, buttons will be below PageView)
+                        // Make sure these controls are *outside* the PageView.builder's item build
+                        // so they apply to the currently playing song, not just the currently displayed page.
+                      ],
+                    );
+                  },
+                ),
               ),
-              const SizedBox(height: 16),
-              StreamBuilder<int?>(
-                stream: _audioPlayer.currentIndexStream,
-                builder: (context, snapshot) {
-                  final int? currentIndex = snapshot.data;
-                  final List<SongModel>? currentPlaylistSongs =
-                      MusicPlayerService.currentSongs;
-
-                  if (currentIndex == null ||
-                      currentPlaylistSongs == null ||
-                      currentIndex >= currentPlaylistSongs.length) {
-                    return const Text("Loading...");
-                  }
-                  final SongModel currentSong =
-                      currentPlaylistSongs[currentIndex];
-                  return Text(
-                    currentSong.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ThemeController.isLightTheme.value
-                          ? Colors.black
-                          : Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  );
-                },
-              ),
-              StreamBuilder<int?>(
-                stream: _audioPlayer.currentIndexStream,
-                builder: (context, snapshot) {
-                  final int? currentIndex = snapshot.data;
-                  final List<SongModel>? currentPlaylistSongs =
-                      MusicPlayerService.currentSongs;
-
-                  if (currentIndex == null ||
-                      currentPlaylistSongs == null ||
-                      currentIndex >= currentPlaylistSongs.length) {
-                    return const Text("Unknown Artist");
-                  }
-                  final SongModel currentSong =
-                      currentPlaylistSongs[currentIndex];
-                  return Text(
-                    currentSong.artist ?? 'Unknown',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ThemeController.isLightTheme.value
-                          ? Colors.grey[700]
-                          : Colors.grey[300],
-                      fontSize: 16,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 26),
+              // The rest of your controls that apply to the player's state (not specific page content)
+              // should be outside the PageView.builder, but still within the main Column.
+              // They will react to the _audioPlayer.currentIndexStream which updates when onPageChanged is called.
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Volume Up (if you want this, it's not standard)
                   IconButton(
                     onPressed: () {
-                      _audioPlayer.setVolume(1.0); // Set to max volume
+                      _audioPlayer.setVolume(1.0);
                       if (mounted) {
                         setState(() {
                           isMuted = false;
@@ -235,7 +230,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isMuted ? Colors.grey : null,
                     ),
                   ),
-                  // Mute/Unmute
                   IconButton(
                     onPressed: () {
                       if (mounted) {
@@ -252,7 +246,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isMuted ? Colors.deepPurple : null,
                     ),
                   ),
-                  // Playback Speed
                   DropdownMenu(
                     dropdownMenuEntries: const [
                       DropdownMenuEntry(value: 0.5, label: '0.5x'),
@@ -262,14 +255,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                     hintText: 'Speed',
                     initialSelection:
-                        _audioPlayer.speed, // Use current player speed
+                    _audioPlayer.speed,
                     onSelected: (value) {
                       if (value != null) {
                         _audioPlayer.setSpeed(value);
                         if (mounted) {
                           setState(() {
-                            // You might want to update a local state variable for display if needed
-                            // For now, _audioPlayer.speed will reflect the current speed
+                            // Update local state if necessary for display
                           });
                         }
                       }
@@ -309,13 +301,11 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Shuffle Button
                   IconButton(
                     onPressed: () async {
                       await _audioPlayer.setShuffleModeEnabled(
                         !_audioPlayer.shuffleModeEnabled,
                       );
-                      // State update for UI happens via the _audioPlayer.shuffleModeEnabledStream listener in initState
                     },
                     icon: Icon(
                       Icons.shuffle,
@@ -323,9 +313,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isShuffle ? Colors.deepPurple : null,
                     ),
                   ),
-                  // Previous Button
                   IconButton(
                     onPressed: () async {
+                      // This will also trigger onPageChanged via currentIndexStream listener
                       await MusicPlayerService.seekToPrevious();
                     },
                     icon: const Icon(Icons.skip_previous, size: 50),
@@ -365,14 +355,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
                   ),
-                  // Next Button
                   IconButton(
                     onPressed: () async {
+                      // This will also trigger onPageChanged via currentIndexStream listener
                       await MusicPlayerService.seekToNext();
                     },
                     icon: const Icon(Icons.skip_next, size: 50),
                   ),
-                  // Loop/Repeat Button
                   IconButton(
                     onPressed: () async {
                       if (_audioPlayer.loopMode == LoopMode.off) {
@@ -382,7 +371,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       } else {
                         await _audioPlayer.setLoopMode(LoopMode.off);
                       }
-                      // State update for UI happens via the _audioPlayer.loopModeStream listener in initState
                     },
                     icon: Icon(
                       Icons.loop,
@@ -390,13 +378,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: _audioPlayer.loopMode == LoopMode.one
                           ? Colors.deepPurple
                           : (_audioPlayer.loopMode == LoopMode.all
-                                ? Colors.blue
-                                : null),
+                          ? Colors.blue
+                          : null),
                     ),
                   ),
                 ],
               ),
-              Expanded(child: Column(children: const [Text('Playlist')])),
             ],
           ),
         ),
@@ -404,18 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildArtwork(SongModel? song) {
-    if (song == null) {
-      return Container(
-        width: 200,
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(Icons.music_note, size: 100, color: Colors.grey[600]),
-      );
-    }
+  Widget _buildArtwork(SongModel song) { // Changed to non-nullable as song is guaranteed in PageView.builder
     return Container(
       width: 200,
       height: 200,
