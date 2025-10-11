@@ -163,6 +163,11 @@ class _SongsState extends State<Songs> {
                                       .toList();
                                 });
                               },
+                              onSubmitted: (String input){
+                                setState(() async {
+
+                                });
+                              },
                             ),
                           ),
                           Expanded(

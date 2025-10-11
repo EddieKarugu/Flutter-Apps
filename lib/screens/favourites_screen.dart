@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:phanplay/controllers/favourites_controller.dart';
+import 'package:phanplay/screens/home_screen.dart';
 
 class FavouritesScreen extends StatelessWidget {
   const FavouritesScreen({super.key});
@@ -20,10 +21,16 @@ class FavouritesScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final song = favouritesController.favouriteSongs[index];
                   return ListTile(
+                    onTap: (){
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => 
+                        HomeScreen(songs: favouritesController.favouriteSongs, currentSongIndex: index))
+                      );
+                    },
                     leading: QueryArtworkWidget(
                       id: song.id,
                       type: ArtworkType.AUDIO,
-                      nullArtworkWidget: const Icon(Icons.audiotrack),
+                      nullArtworkWidget: const Icon(Icons.audiotrack, size: 50),
                     ),
                     title: Text(
                       song.title,

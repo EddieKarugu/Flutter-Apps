@@ -1,6 +1,6 @@
 # phanplay
 
-A new Flutter project.
+play your music anywhere anytime with phanplay
 
 ## Getting Started
 

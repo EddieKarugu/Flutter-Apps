@@ -1,3 +1,4 @@
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart'; // Import for ValueNotifier
 import 'package:just_audio/just_audio.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -68,7 +69,15 @@ class MusicPlayerService {
 
       _playlist = ConcatenatingAudioSource(
         children: [
-          for (var song in songs) AudioSource.uri(Uri.parse(song.uri!)),
+          for (var song in songs)
+            AudioSource.uri(
+              Uri.parse(song.uri!),
+              tag: MediaItem(id: song.id.toString(),
+                  title: song.title,
+                artist: song.artist,
+                album: song.album
+              ),
+            ),
         ],
       );
 
@@ -104,7 +113,7 @@ class MusicPlayerService {
     await audioPlayer.seekToNext();
     PositionController.currentMusic.value! > _currentSongs!.length
         ? PositionController.currentMusic.value =
-        PositionController.currentMusic.value! - 1
+              PositionController.currentMusic.value! - 1
         : PositionController.currentMusic.value = 0;
   }
 
@@ -115,7 +124,6 @@ class MusicPlayerService {
               PositionController.currentMusic.value! - 1
         : PositionController.currentMusic.value = 0;
   }
-
 
   static Future<void> seekToIndex(int index) async {
     if (_audioPlayer.currentIndex != index) {
@@ -129,7 +137,12 @@ class MusicPlayerService {
     }
   }
 
-// And make sure your seekToNext and seekToPrevious methods also appropriately update the index.
-// just_audio's `seekToNext()` and `seekToPrevious()` naturally update the `currentIndexStream`
-// so the PageView will respond via the listener.
+  static Future<int?> seekWithName (String songName) async{
+    final index = _currentSongs!.indexWhere((song) => song.title == songName);
+    return index;
+  }
+
+  // And make sure your seekToNext and seekToPrevious methods also appropriately update the index.
+  // just_audio's `seekToNext()` and `seekToPrevious()` naturally update the `currentIndexStream`
+  // so the PageView will respond via the listener.
 }

@@ -110,17 +110,23 @@ class _HomeScreenState extends State<HomeScreen> {
             stream: _audioPlayer.currentIndexStream,
             builder: (context, snapshot) {
               final int? currentIndex = snapshot.data;
-              final List<SongModel>? currentPlaylistSongs = MusicPlayerService.currentSongs;
+              final List<SongModel>? currentPlaylistSongs =
+                  MusicPlayerService.currentSongs;
 
-              if (currentIndex == null || currentPlaylistSongs == null || currentIndex >= currentPlaylistSongs.length) {
-                return IconButton( // Placeholder for when no song is loaded
+              if (currentIndex == null ||
+                  currentPlaylistSongs == null ||
+                  currentIndex >= currentPlaylistSongs.length) {
+                return IconButton(
+                  // Placeholder for when no song is loaded
                   onPressed: null,
                   icon: Icon(Icons.star_border),
                 );
               }
 
               final SongModel currentSong = currentPlaylistSongs[currentIndex];
-              bool isStarred = favouritesController.favouriteSongs.contains(currentSong);
+              bool isStarred = favouritesController.favouriteSongs.contains(
+                currentSong,
+              );
 
               return IconButton(
                 onPressed: () {
@@ -163,10 +169,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             children: [
               // Use PageView.builder for the song-specific content
-              Expanded( // Ensure PageView takes available space
+              Expanded(
+                // Ensure PageView takes available space
                 child: PageView.builder(
                   controller: _pageController,
-                  itemCount: widget.songs.length, // Number of songs in the playlist
+                  itemCount:
+                      widget.songs.length, // Number of songs in the playlist
                   onPageChanged: (index) {
                     // This is crucial: when the page changes, tell the audio player to seek to that song
                     MusicPlayerService.seekToIndex(index);
@@ -254,8 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       DropdownMenuEntry(value: 2.0, label: '2.0x'),
                     ],
                     hintText: 'Speed',
-                    initialSelection:
-                    _audioPlayer.speed,
+                    initialSelection: _audioPlayer.speed,
                     onSelected: (value) {
                       if (value != null) {
                         _audioPlayer.setSpeed(value);
@@ -378,8 +385,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: _audioPlayer.loopMode == LoopMode.one
                           ? Colors.deepPurple
                           : (_audioPlayer.loopMode == LoopMode.all
-                          ? Colors.blue
-                          : null),
+                                ? Colors.blue
+                                : null),
                     ),
                   ),
                 ],
@@ -391,7 +398,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildArtwork(SongModel song) { // Changed to non-nullable as song is guaranteed in PageView.builder
+  Widget _buildArtwork(SongModel song) {
+    // Changed to non-nullable as song is guaranteed in PageView.builder
     return Container(
       width: 200,
       height: 200,

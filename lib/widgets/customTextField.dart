@@ -5,12 +5,13 @@ class Customtextfield extends StatelessWidget {
   final IconData icon;
   final TextEditingController controller;
   final Function(String)? onChanged;
+  final Function(String)? onSubmitted;
   const Customtextfield({
     super.key,
     required this.hint,
     required this.icon,
     required this.controller,
-    required this.onChanged,
+    required this.onChanged, this.onSubmitted,
   });
 
   @override
@@ -18,6 +19,7 @@ class Customtextfield extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      onSubmitted: onSubmitted,
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: Icon(icon),

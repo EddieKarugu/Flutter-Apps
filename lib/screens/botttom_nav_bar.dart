@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:phanplay/screens/favourites_screen.dart';
+import 'package:phanplay/screens/video_playing_screen.dart';
 
+import 'AccountScreen.dart';
 import 'MusicScreen.dart';
 
 class BotttomNavBar extends StatefulWidget {
@@ -14,9 +16,9 @@ class _BotttomNavBarState extends State<BotttomNavBar> {
 
   final List<Widget> _screens = [
     const Songs(),
-    const Text('Videos'),
+    const VideoPlayingScreen(),
     const FavouritesScreen(),
-    const Text('Account')
+    const Accountscreen()
   ];
 
   int _currentScreenIndex = 0;
@@ -40,4 +42,8 @@ class _BotttomNavBarState extends State<BotttomNavBar> {
       },),
     );
   }
+}
+
+class AccountScreen {
+  const AccountScreen();
 }
